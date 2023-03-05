@@ -39,7 +39,7 @@ default_cfg.LABEL_COLUMN='rating'
 
 # TRANSFORMERS PARAMETERS
 default_cfg.MODEL_NAME = "prajjwal1/bert-tiny"
-default_cfg.NUM_EPOCHS = 6
+default_cfg.NUM_EPOCHS = 3
 default_cfg.TRAIN_BATCH_SIZE = 32
 default_cfg.VALID_BATCH_SIZE = 32
 default_cfg.TEST_BATCH_SIZE = 32

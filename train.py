@@ -10,7 +10,7 @@ from transformers import (
     AutoModelForSequenceClassification,
     DataCollatorWithPadding
 )
-
+from huggingface_hub import HfApi
 
 from transformers.trainer_callback import EarlyStoppingCallback
 from datasets import load_metric, load_from_disk
@@ -96,9 +96,9 @@ def compute_metrics(eval_pred):
     logits,labels=eval_pred
     predictions=np.argmax(logits,axis=-1)
     acc= acc_metric.compute(predictions=predictions,references=labels)
-    f1= f1_metric.compute(predictions=predictions,references=labels)
-    recall= recall_metric.compute(predictions=predictions,references=labels)
-    precision= precision_metric.compute(predictions=predictions,references=labels)
+    f1= f1_metric.compute(predictions=predictions,references=labels,average='micro')
+    recall= recall_metric.compute(predictions=predictions,references=labels,average='micro')
+    precision= precision_metric.compute(predictions=predictions,references=labels,average='micro')
 
     return {
         "accuracy":acc['accuracy'],
@@ -112,7 +112,7 @@ def train(cfg):
 
     with wandb.init(
         project=cfg.PROJECT_NAME, job_type=cfg.MODEL_TRAINING_JOB_TYPE,
-        config=dict(cfg),name='test_train'
+        config=dict(cfg)
     ) as run:
         cfg=wandb.config
         
@@ -123,10 +123,10 @@ def train(cfg):
             per_device_train_batch_size=cfg.TRAIN_BATCH_SIZE,
             per_device_eval_batch_size=cfg.VALID_BATCH_SIZE,
             warmup_steps=cfg.WARMUP_STEPS,
-            fp16=False,
+            fp16=cfg.FP16,
             learning_rate=float(cfg.LEARNING_RATE),
             logging_dir=f"{cfg.MODEL_DATA_FOLDER}/logs",
-            logging_steps=1000,
+            logging_steps=2000,
             evaluation_strategy='steps',
             save_steps=2000,
             save_total_limit=2,
@@ -138,30 +138,40 @@ def train(cfg):
             #hub_strategy=cfg.HUB_STRATEGY,
             #hub_model_id=cfg.HUB_MODEL_ID
             )
-    train_dataset, valid_dataset=load_data(run,cfg)
+        train_dataset, valid_dataset=load_data(run,cfg)
     
     
-    num_classes = cfg.NUM_CLASSES
-    tokenizer=AutoTokenizer.from_pretrained(cfg.MODEL_NAME)
+        num_classes = cfg.NUM_CLASSES
+        tokenizer=AutoTokenizer.from_pretrained(cfg.MODEL_NAME)
 
-    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
-    model = AutoModelForSequenceClassification.from_pretrained(cfg.MODEL_NAME,
-                                           num_labels=num_classes)
+        data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+        model = AutoModelForSequenceClassification.from_pretrained(cfg.MODEL_NAME,
+                                            num_labels=num_classes)
 
-    trainer=Trainer(
-        model,
-        training_args,
-        train_dataset=train_dataset,
-        eval_dataset=valid_dataset,
-        data_collator=data_collator,
-        tokenizer=tokenizer,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
-        compute_metrics=compute_metrics
-        )
-    
-    trainer.train()
-    
-    trainer.save_model()
+        trainer=Trainer(
+            model,
+            training_args,
+            train_dataset=train_dataset,
+            eval_dataset=valid_dataset,
+            data_collator=data_collator,
+            tokenizer=tokenizer,
+            callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
+            compute_metrics=compute_metrics
+            )
+        
+        trainer.train()
+        
+        trainer.save_model("./tinybert-goodreads-model")
+        model.push_to_hub('dhmeltzer/tinybert-goodreads-wandb')
+        tokenizer.push_to_hub('dhmeltzer/tinybert-goodreads-wandb')
+
+        hf_api=HfApi()
+        user=hf_api.whoami()
+
+        trained_model_art=wandb.Artifact('tinybert-goodreads-wandb',type=cfg.MODEL_TYPE)
+        hub_id=f"{user['name']}/tinybert-goodreads-wandb"
+        trained_model_art.metadata={"hub_id":hub_id}
+        run.log_artifact(trained_model_art)
 
 if __name__ == "__main__":
     

@@ -98,7 +98,7 @@ def downsample_and_log(cfg):
 
 def split_and_log(cfg):
     """
-    Downsamples the classses and tokenizes the data.
+    Splits the data into train/valid/test splits.
     
     Parameters
     ----------
@@ -141,7 +141,8 @@ def split_and_log(cfg):
         tokenizer=AutoTokenizer.from_pretrained(cfg.MODEL_NAME)
         
         def tokenize_batch(batch):
-            tokenized_batch = tokenizer(batch['review_text'],padding=True,truncation=True)
+            tokenized_batch = tokenizer(batch['review_text'],padding='max_length',
+                                        truncation=True)
             return tokenized_batch
         
         train_dataset=Dataset.from_pandas(train_df)

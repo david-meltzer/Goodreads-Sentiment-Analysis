@@ -10,65 +10,12 @@ from transformers import (
     AutoModelForSequenceClassification,
     DataCollatorWithPadding
 )
+
 from transformers.trainer_callback import EarlyStoppingCallback
 from datasets import load_metric, load_from_disk
-from ml_collections import config_dict
+from params import default_cfg
 
 os.environ['TOKENIZERS_PARALLELISM']="false"
-
-default_cfg = config_dict.ConfigDict()
-
-# WANDB BASE PARAMETERS
-default_cfg.PROJECT_NAME = "mlops-course-assgn2"
-
-#WANDB JOB TYPES
-default_cfg.RAW_DATA_JOB_TYPE='fetch_raw_data'
-default_cfg.DATA_PROCESSING_JOB_TYPE='process-data'
-default_cfg.SPLIT_DATA_JOB_TYPE='split-data'
-default_cfg.MODEL_TRAINING_JOB_TYPE='model-training'
-default_cfg.MODEL_INFERENCE_JOB_TYPE='model-inference'
-
-# WANDB ARTIFACT TYPES
-default_cfg.DATASET_TYPE='dataset'
-default_cfg.MODEL_TYPE='model'
-default_cfg.MODEL_TRAINING_JOB_TYPE='model_training'
-
-#WANDB ARTIFACT NAMES
-default_cfg.RAW_DATA_ARTIFACT='goodreads_raw_data'
-default_cfg.PROCESSED_DATA_ARTIFACT='processed_data'
-default_cfg.TRAIN_DATA_ARTIFACT='goodreads_train_data'
-default_cfg.VALID_DATA_ARTIFACT='goodreads_valid_data'
-default_cfg.TEST_DATA_ARTIFACT='goodreads_test_data'
-
-#DATA FOLDERS
-default_cfg.DATA_FOLDER='data'
-default_cfg.PROCESSED_DATA_FOLDER='data/processed_data'
-default_cfg.FIGURE_FOLDER='figures'
-default_cfg.TRAIN_DATA_FOLDER='data/train_data'
-default_cfg.TEST_DATA_FOLDER='data/test_data'
-default_cfg.VALID_DATA_FOLDER='data/valid_data'
-default_cfg.MODEL_DATA_FOLDER = 'distilbert-goodreads-model'
-
-# COLUMNS TO KEEP
-default_cfg.FEATURE_COLUMN='review_text'
-default_cfg.LABEL_COLUMN='rating'
-
-# TRANSFORMERS PARAMETERS
-default_cfg.MODEL_NAME = "prajjwal1/bert-tiny"
-default_cfg.NUM_EPOCHS = 6
-default_cfg.TRAIN_BATCH_SIZE = 32
-default_cfg.VALID_BATCH_SIZE = 32
-default_cfg.TEST_BATCH_SIZE = 32
-default_cfg.WARMUP_STEPS = 1500
-default_cfg.LEARNING_RATE = 5e-5
-default_cfg.FP16 = True
-default_cfg.NUM_CLASSES=6
-
-# HUB PARAMETERS
-default_cfg.PUSH_TO_HUB = True
-default_cfg.HUB_MODEL_ID = "dhmeltzer/tinybert-goodreads-wandb"
-default_cfg.HUB_STRATEGY = "every_save"
-
 
 def parse_args():
     "Overriding default arguments for model"
@@ -76,47 +23,76 @@ def parse_args():
         description="Process base parameters and hyperparameteres"
     )
     argparser.add_argument(
-        --"model_name",
+        "--model_name",
         type=str,
-        default=default_cfg.model_name,
+        default=default_cfg.MODEL_NAME,
         help="Model architecture to use"
     )
     argparser.add_argument(
         "--num_epochs",
         type=int,
-        default=default_cfg.num_epochs,
+        default=default_cfg.NUM_EPOCHS,
         help="number of training epochs"
     )
     argparser.add_argument(
         "--train_batch_size",
         type=int,
-        default=default_cfg.train_batch_size,
+        default=default_cfg.TRAIN_BATCH_SIZE,
         help="Train batch size"
     )
     argparser.add_argument(
         "--eval_batch_size",
         type=int,
-        default=default_cfg.eval_batch_size,
+        default=default_cfg.EVAL_BATCH_SIZE,
         help="Validation batch size"
     )
     argparser.add_argument(
         "--warmup_steps",
         type=int,
-        default=default_cfg.warmup_steps,
+        default=default_cfg.WARMUP_STEPS,
         help="number of warmup steps"
     )
     argparser.add_argument(
         "--learning_rate",
         type=float,
-        default=default_cfg.learning_rate,
+        default=default_cfg.LEARNING_RATE,
         help="learning rate"
     )
     argparser.add_argument(
         "--fp16",
         type=str,
-        default=default_cfg.pg16,
+        default=default_cfg.PG16,
         help="Set to true to use half precision"
     )
+
+def load_data(run,cfg):
+    train_artifact = run.use_artifact(f"{cfg.TRAIN_DATA_ARTIFACT}:latest")
+    train_artifact.download(root=cfg.TRAIN_DATA_FOLDER)
+    train_dataset=load_from_disk(cfg.TRAIN_DATA_FOLDER)
+
+    valid_dataset = run.use_artifact(f"{cfg.VALID_DATA_FOLDER}")
+    valid_dataset.download(root=cfg.VALID_DATA_FOLDER)
+    valid_dataset = load_from_disk(cfg.VALID_DATA_FOLDER)
+
+    drop_cols=[col for col in list(train_dataset.features) if col not in ['input_ids','attention_mask','rating']]
+
+    train_dataset=train_dataset.remove_columns(drop_cols)
+    valid_dataset=valid_dataset.remove_columns(drop_cols)
+
+    train_dataset=train_dataset.rename_column('rating','labels')
+    valid_dataset=valid_dataset.rename_column('rating','labels')
+
+    train_dataset.set_format('torch', columns=['input_ids', 'attention_mask', 'labels'])
+    valid_dataset.set_format('torch', columns=['input_ids', 'attention_mask', 'labels'])
+
+    return train_dataset, valid_dataset
+
+    #def tokenize_batch(batch):
+    #    tokenized_batch = tokenizer(batch['review_text'],padding=True,
+    #                            truncation=True)
+    #    return tokenized_batch
+    
+#    train_dataset = train_dataset.map()
 
 def compute_metrics(eval_pred):
     acc_metric=evaluate.load('accuracy')
@@ -139,5 +115,55 @@ def compute_metrics(eval_pred):
 
 def train(cfg):
     with wandb.init(
-        project=cfg.PROJECT_NAME
-    )
+        project=cfg.PROJECT_NAME, job_type=cfg.MODEL_TRAINING_JOB_TYPE,
+        config=dict(cfg)
+    ) as run:
+        cfg=wandb.config
+
+        training_args=TrainingArguments(
+            output_dir=cfg.MODEL_DATA_FOLDER,
+            num_train_epochs=cfg.NUM_EPOCHS,
+            per_device_train_batch_size=cfg.TRAIN_BATCH_SIZE,
+            per_device_eval_batch_size=cfg.VALID_BATCH_SIZE,
+            warmup_steps=cfg.WARMUP_STEPS,
+            fp16=cfg.FP16,
+            learning_rate=float(cfg.LEARNING_RATE),
+            logging_dir=f"{cfg.MODEL_DATA_FOLDER}/logs",
+            logging_steps=1000,
+            evaluation_strategy='steps',
+            save_steps=2000,
+            save_total_limit=2,
+            load_best_model_at_end=True,
+            metric_for_best_model='accuracy',
+            report_to='wandb'
+            ,push_to_hub=cfg.PUSH_TO_HUB,
+            hub_strategy=cfg.HUB_STRATEGY,
+            hub_model_id=cfg.HUB_MODEL_ID
+            )
+    train_dataset, valid_dataset=load_data(run,cfg)
+    
+    
+    num_classes = cfg.NUM_CLASSES
+    tokenizer=AutoTokenizer.from_pretrained(cfg.model_name)
+
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+    model = AutoModelForSequenceClassification.from_pretrained('prajjwal1/bert-tiny',
+                                           num_labels=num_classes)
+
+    trainer=Trainer(
+        model,
+        training_args,
+        train_dataset=train_dataset,
+        eval_dataset=valid_dataset,
+        data_collator=data_collator,
+        tokenizer=tokenizer,
+        callbacks=[EarlyStoppingCallback()],
+        compute_metrics=compute_metrics
+        )
+    trainer.train()
+    if cfg.log_model:
+        trainer.save_model()
+
+if __name__ == "__main__":
+    default_cfg.update(vars(parse_args()))
+    train(default_cfg)

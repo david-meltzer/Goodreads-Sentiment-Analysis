@@ -141,7 +141,7 @@ def split_and_log(cfg):
         tokenizer=AutoTokenizer.from_pretrained(cfg.MODEL_NAME)
         
         def tokenize_batch(batch):
-            tokenized_batch = tokenizer(batch['review_text'],padding='max_length',
+            tokenized_batch = tokenizer(batch['review_text'],padding=512,
                                         truncation=True)
             return tokenized_batch
         

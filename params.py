@@ -26,7 +26,7 @@ default_cfg.TEST_DATA_ARTIFACT='goodreads_test_data'
 
 #DATA FOLDERS
 default_cfg.DATA_FOLDER='data'
-default_cfg.PROCESSED_DATA_FOLDER='data/processed_data'
+default_cfg.PROCESSED_DATA_FOLDER='processed_data'
 default_cfg.FIGURE_FOLDER='figures'
 default_cfg.TRAIN_DATA_FOLDER='data/train_data'
 default_cfg.TEST_DATA_FOLDER='data/test_data'

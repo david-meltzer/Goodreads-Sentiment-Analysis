@@ -31,7 +31,7 @@ default_cfg.FIGURE_FOLDER='figures'
 default_cfg.TRAIN_DATA_FOLDER='data/train_data'
 default_cfg.TEST_DATA_FOLDER='data/test_data'
 default_cfg.VALID_DATA_FOLDER='data/valid_data'
-default_cfg.MODEL_DATA_FOLDER = 'distilbert-goodreads-model'
+default_cfg.MODEL_DATA_FOLDER = 'tiny_bert_goodreads'
 
 # COLUMNS TO KEEP
 default_cfg.FEATURE_COLUMN='review_text'

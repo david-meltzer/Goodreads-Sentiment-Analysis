@@ -38,7 +38,7 @@ def log_raw_data(cfg):
         os.makedirs('./data',exist_ok=True)
         os.makedirs('./data/raw_data',exist_ok=True)
         os.system('kaggle competitions download -c goodreads-books-reviews-290312')
-        os.system('tar -xopf goodreads-books-reviews-290312.zip -C ./data/raw_data')
+        os.system('unzip -d ./data/raw_data goodreads-books-reviews-290312.zip')
 
         train_path='./data/raw_data/goodreads_train.csv'
 
@@ -60,7 +60,7 @@ def downsample_and_log(cfg):
 
     """
     with wandb.init(
-        project=cfg.WANDB_PROJECT,
+        project=cfg.PROJECT_NAME,
         entity=None,
         job_type=cfg.PROCESSED_DATA_ARTIFACT,
         config=dict(cfg)
@@ -89,7 +89,7 @@ def downsample_and_log(cfg):
 
         path_to_processed= f'./data/{cfg.PROCESSED_DATA_FOLDER}/processed.csv'
         
-        os.makedirs(f'mkdir -p ./data/{cfg.PROCESSED_DATA_FOLDER}',exist_ok=True)
+        os.makedirs(f'./data/{cfg.PROCESSED_DATA_FOLDER}',exist_ok=True)
         df.to_csv(path_to_processed)
 
         processed_data_art=wandb.Artifact(cfg.PROCESSED_DATA_ARTIFACT,type=cfg.DATASET_TYPE)
@@ -111,7 +111,7 @@ def split_and_log(cfg):
     """
 
     with wandb.init(
-        project=cfg.WANDB_PROJECT,
+        project=cfg.PROJECT_NAME,
         job_type=cfg.SPLIT_DATA_JOB_TYPE,
         config=dict(cfg)
     ) as run:
@@ -159,7 +159,7 @@ def split_and_log(cfg):
 
         train_data_art=wandb.Artifact(cfg.TRAIN_DATA_ARTIFACT,type=cfg.DATASET_TYPE)
         valid_data_art=wandb.Artifact(cfg.VALID_DATA_ARTIFACT,type=cfg.DATASET_TYPE)
-        test_data_art=wandb.Artifact(cfg.TEST_DATA_ARTIFACT,type=params.DATASET_TYPE)
+        test_data_art=wandb.Artifact(cfg.TEST_DATA_ARTIFACT,type=cfg.DATASET_TYPE)
 
         train_data_art.add_dir(cfg.TRAIN_DATA_FOLDER)
         valid_data_art.add_dir(cfg.VALID_DATA_FOLDER)
@@ -173,9 +173,15 @@ def run_data_pipeline(cfg):
     """
     Runs the data processing pipeline.
     """
+    processed_file=f'./data/{cfg.PROCESSED_DATA_FOLDER}/processed.csv'
 
-    log_raw_data(cfg)
-    downsample_and_log(cfg)
+    raw_data_path='./data/raw_data/goodreads_train.csv'
+    if not os.path.isfile(raw_data_path):
+        log_raw_data(cfg)
+    
+    if not os.path.isfile(processed_file):
+        downsample_and_log(cfg)
+
     split_and_log(cfg)
 
 

@@ -1,0 +1,23 @@
+program: train.py
+method: random
+project: week_2_goodreads
+description: "Random sweep for BERTtiny."
+metric:
+    name: accuracy
+    goal: maximize
+early_terminate:
+    type: hyperband
+    min_iter: 5
+parameters:
+    train_batch_size:
+        value: 32
+    eval_batch_size:
+        value: 32
+    warmup_steps:
+        values: [256,512,1024]
+    learning_rate:
+        distribution: 'log_uniform_values'
+        min: 1e-5
+        max: 1e-2
+    gradient_accumulation_steps:
+        values: [1,2,4,8,16]

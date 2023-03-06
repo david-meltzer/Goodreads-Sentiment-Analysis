@@ -155,7 +155,7 @@ def train(cfg):
             eval_dataset=valid_dataset,
             data_collator=data_collator,
             tokenizer=tokenizer,
-            callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
+            callbacks=[EarlyStoppingCallback(early_stopping_patience=3)],
             compute_metrics=compute_metrics
             )
         

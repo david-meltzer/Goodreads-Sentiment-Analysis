@@ -24,47 +24,57 @@ def parse_args():
         description="Process base parameters and hyperparameteres"
     )
     argparser.add_argument(
-        "--model_name",
+        "--MODEL_NAME",
         type=str,
         default=default_cfg.MODEL_NAME,
         help="Model architecture to use"
     )
     argparser.add_argument(
-        "--num_epochs",
+        "--NUM_EPOCHS",
         type=int,
         default=default_cfg.NUM_EPOCHS,
         help="number of training epochs"
     )
     argparser.add_argument(
-        "--train_batch_size",
+        "--TRAIN_BATCH_SIZE",
         type=int,
         default=default_cfg.TRAIN_BATCH_SIZE,
         help="Train batch size"
     )
     argparser.add_argument(
-        "--eval_batch_size",
+        "--VALID_BATCH_SIZE",
         type=int,
-        default=default_cfg.VALID_DATA_ARTIFACT,
+        default=default_cfg.VALID_BATCH_SIZE,
         help="Validation batch size"
     )
     argparser.add_argument(
-        "--warmup_steps",
+        "--WARMUP_STEPS",
         type=int,
         default=default_cfg.WARMUP_STEPS,
         help="number of warmup steps"
     )
     argparser.add_argument(
-        "--learning_rate",
+        "--LEARNING_RATE",
         type=float,
         default=default_cfg.LEARNING_RATE,
         help="learning rate"
     )
     argparser.add_argument(
-        "--fp16",
-        type=str,
-        default=default_cfg.FP16,
+        "--FP16",
+        type=int,
+        default=int(default_cfg.FP16),
         help="Set to true to use half precision"
     )
+
+    argparser.add_argument(
+        "--GRADIENT_ACCUMULATION_STEPS",
+        type=int,
+        default=default_cfg.GRADIENT_ACCUMULATION_STEPS,
+        help="Set to true to use half precision"
+    )
+
+
+    return argparser.parse_args()
 
 def load_data(run,cfg):
     train_artifact = run.use_artifact(f"{cfg.TRAIN_DATA_ARTIFACT}:latest")
@@ -123,12 +133,14 @@ def train(cfg):
             per_device_train_batch_size=cfg.TRAIN_BATCH_SIZE,
             per_device_eval_batch_size=cfg.VALID_BATCH_SIZE,
             warmup_steps=cfg.WARMUP_STEPS,
-            fp16=cfg.FP16,
+            gradient_accumulation_steps=cfg.GRADIENT_ACCUMULATION_STEPS,
+            fp16=bool(cfg.FP16),
             learning_rate=float(cfg.LEARNING_RATE),
             logging_dir=f"{cfg.MODEL_DATA_FOLDER}/logs",
-            logging_steps=2000,
+            logging_steps=500,
+            eval_steps=500,
             evaluation_strategy='steps',
-            save_steps=2000,
+            save_steps=500,
             save_total_limit=2,
             load_best_model_at_end=True,
             metric_for_best_model='accuracy',
@@ -161,20 +173,21 @@ def train(cfg):
         
         trainer.train()
         
-        trainer.save_model("./tinybert-goodreads-model")
-        model.push_to_hub('dhmeltzer/tinybert-goodreads-wandb')
-        tokenizer.push_to_hub('dhmeltzer/tinybert-goodreads-wandb')
+        trainer.save_model(cfg.MODEL_DATA_FOLDER)
+        model.push_to_hub(cfg.HUB_MODEL_ID)
+        tokenizer.push_to_hub(cfg.HUB_MODEL_ID)
 
         hf_api=HfApi()
         user=hf_api.whoami()
 
-        trained_model_art=wandb.Artifact('tinybert-goodreads-wandb',type=cfg.MODEL_TYPE)
-        hub_id=f"{user['name']}/tinybert-goodreads-wandb"
+        trained_model_art=wandb.Artifact(cfg.MODEL_DATA_FOLDER,type=cfg.MODEL_TYPE)
+        hub_id = cfg.HUB_MODEL_ID
         trained_model_art.metadata={"hub_id":hub_id}
         run.log_artifact(trained_model_art)
 
 if __name__ == "__main__":
     
-    #print(parse_args())
-    #default_cfg.update(vars(parse_args()))
+    #print(vars(parse_args()))
+    default_cfg.update(vars(parse_args()))
+    #print(default_cfg)
     train(default_cfg)

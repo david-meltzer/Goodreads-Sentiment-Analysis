@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from transformers import AutoTokenizer
 from pathlib import Path
+from sklearn.model_selection import StratifiedGroupKFold
 from params import default_cfg
 from datasets import load_from_disk, load_dataset, Dataset, load_metric
 
@@ -71,6 +72,11 @@ def downsample_and_log(cfg):
         path=raw_data_at.download()
         df=pd.read_csv(path+'/goodreads_train.csv')
 
+        df['review_text']=df.loc[:,'review_text'].map(lambda x:x.lower())
+        df['review_text']=df.loc[:,'review_text'].map(lambda x:' '.join(x.split()).strip())
+
+        df.drop_duplicates(subset=['review_text'], inplace=True, keep='first')
+
         undersample = RandomUnderSampler(random_state = 42)
 
         df, y_bal = undersample.fit_resample(df.drop(columns=['rating']), df['rating'])
@@ -117,26 +123,41 @@ def split_and_log(cfg):
     ) as run:
         cfg=wandb.config
 
+        sgkf_test = StratifiedGroupKFold(n_splits=5)
+        sgkf_valid = StratifiedGroupKFold(n_splits=4)
+
         processed_data_at=run.use_artifact(f'{cfg.PROCESSED_DATA_ARTIFACT}:latest')
         _ = processed_data_at.download()
         df=pd.read_csv(f'./data/{cfg.PROCESSED_DATA_FOLDER}/processed.csv')
 
-        gs_test = GroupShuffleSplit(n_splits=2, train_size=.8, random_state=42)
-        gs_valid = GroupShuffleSplit(n_splits=2, train_size=.75, random_state=43)
+        groups_test = df['book_id'].to_numpy()
+        y_test = df['user_id'].to_numpy()
 
-        train_idx,test_idx=next(iter(gs_test.split(df,groups=df.book_id)))
+        train_idxs,test_idxs=next(
+            iter(
+                sgkf_test.split(
+                    np.arange(len(groups_test)),
+                    y_test,
+                    groups_test)))
 
-        train_df=df.loc[train_idx].reset_index(drop=True)
-        test_df=df.loc[test_idx].reset_index(drop=True)
+        test_df=df.iloc[test_idxs]
+        train_df=df.iloc[train_idxs]
 
-        train_idx,valid_idx=next(iter(gs_valid.split(train_df,groups=train_df.book_id)))
+        groups_valid=train_df['book_id'].to_numpy()
+        y_valid=train_df['user_id'].to_numpy()
 
-        valid_df=train_df.loc[valid_idx]
-        train_df=train_df.loc[train_idx]
+        train_idxs,valid_idxs=next(
+            iter(
+                sgkf_valid.split(
+                    np.arange(len(groups_valid)),
+                    y_valid,
+                    groups_valid
+                )
+            )
+        )
 
-        train_df.reset_index(drop=True,inplace=True)
-        valid_df.reset_index(drop=True,inplace=True)
-        test_df.reset_index(drop=True,inplace=True)
+        valid_df=train_df.iloc[valid_idxs]
+        train_df=train_df.iloc[train_idxs]
 
         tokenizer=AutoTokenizer.from_pretrained(cfg.MODEL_NAME)
         
@@ -175,15 +196,11 @@ def run_data_pipeline(cfg):
     """
     Runs the data processing pipeline.
     """
-    processed_file=f'./data/{cfg.PROCESSED_DATA_FOLDER}/processed.csv'
-
-    raw_data_path='./data/raw_data/goodreads_train.csv'
-    if not os.path.isfile(raw_data_path):
-        log_raw_data(cfg)
+    #processed_file=f'./data/{cfg.PROCESSED_DATA_FOLDER}/processed.csv'
+    #raw_data_path='./data/raw_data/goodreads_train.csv'
     
-    if not os.path.isfile(processed_file):
-        downsample_and_log(cfg)
-
+    log_raw_data(cfg)
+    downsample_and_log(cfg)
     split_and_log(cfg)
 
 

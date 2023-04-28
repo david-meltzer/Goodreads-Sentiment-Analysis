@@ -9,7 +9,7 @@ In this project I used encoder-only transformers in the BERT family to use the t
 As a part of this course I wrote the following three reports: <a href="https://api.wandb.ai/links/dmeltzer/ilnx2o0v">Report 1</a>, <a href="https://api.wandb.ai/links/dmeltzer/s840cljt">Report 2</a>, and <a href="https://wandb.ai/dmeltzer/mlops-course-assgn3/reports/Goodreads-Reviews-Week-3--VmlldzozNzYxODkz">Report 3</a>.
 
 During this project I used both Huggingface and Weights and Biases to save the trained models and the datasets.
-The fine-tuned DistilBERT model can be found <a href="https://huggingface.co/dhmeltzer/distilbert-goodreads-wandb">here</a> and the fine-tuned BERT-tiny model can be found <a href="https://huggingface.co/dhmeltzer/bert-tiny-goodreads-wandb >here</a>.
+The fine-tuned DistilBERT model can be found <a href="https://huggingface.co/dhmeltzer/distilbert-goodreads-wandb">here</a> and the fine-tuned BERT-tiny model can be found <a href="https://huggingface.co/dhmeltzer/bert-tiny-goodreads-wandb">here</a>.
 In the following subsection I will give a brief summary of these reports.
 
 

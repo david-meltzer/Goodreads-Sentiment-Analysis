@@ -1,5 +1,8 @@
 <img src="https://i.imgur.com/gb6B4ig.png" width="400" alt="Weights & Biases" />
 
+# Quick Links
+A detailed description of this project can be found in the following Weights and Biases reports: <a href="https://api.wandb.ai/links/dmeltzer/ilnx2o0v">1</a>, <a href="https://api.wandb.ai/links/dmeltzer/s840cljt">2</a>, <a href="https://wandb.ai/dmeltzer/mlops-course-assgn3/reports/Goodreads-Reviews-Week-3--VmlldzozNzYxODkz">3</a>
+
 # Goodreads-Sentiment-Analysis
 
 This respository contains the code and reports completed as a part of the Weights and Biases (W&B) course "MLOps: Effective Model Development", see <a href="https://www.wandb.courses/courses/effective-mlops-model-development">here</a>. This course is a great introduction to the Weights and Biases ecosystem and clearly explains how to use the tools offered by W&B to track machine learning experiments, perform hyperparameter sweeps, and summarize results using W&B reports. In particular, the course explains how to use W&B artifacts to save and version both datasets and models.

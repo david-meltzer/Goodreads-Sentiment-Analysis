@@ -2,7 +2,7 @@
 
 # Quick Links
 A detailed description of this project can be found in the following Weights and Biases reports: <a href="https://api.wandb.ai/links/dmeltzer/ilnx2o0v">1</a>, <a href="https://api.wandb.ai/links/dmeltzer/s840cljt">2</a>, <a href="https://wandb.ai/dmeltzer/mlops-course-assgn3/reports/Goodreads-Reviews-Week-3--VmlldzozNzYxODkz">3</a>.
-A Streamlit application where you can test the models yourself can be found <a href="https://huggingface.co/spaces/dhmeltzer/Sentiment-of-Book-Reviews">here</a>. The models are deployed on AWS and are accessed via a REST API.
+A Streamlit application where you can test the models yourself can be found <a href="https://huggingface.co/spaces/dhmeltzer/Sentiment-of-Book-Reviews">here</a>. The models are deployed on AWS and are accessed via a REST API.The code for the Streamlit application can be found in the **application** folder.
 
 # Goodreads-Sentiment-Analysis
 
